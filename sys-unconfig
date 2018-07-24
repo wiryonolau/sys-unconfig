@@ -20,20 +20,20 @@ function set_network {
     fi
 
     if [ ! -z "${_IPADDR}" ]; then
-        /usr/bin/nmcli connection modify "${_CONN}" modify ipv4.method static
-        /usr/bin/nmcli connection modify "${_CONN}" modify ipv4.addresses "${_IPADDR}"
+        /usr/bin/nmcli connection modify "${_CONN}" ipv4.method static
+        /usr/bin/nmcli connection modify "${_CONN}" ipv4.addresses "${_IPADDR}"
     fi
 
     if [ ! -z "${_GATEWAY}" ]; then
-        /usr/bin/nmcli connection modify "${_CONN}" modify ipv4.gateway "${_GATEWAY}"
+        /usr/bin/nmcli connection modify "${_CONN}" ipv4.gateway "${_GATEWAY}"
     fi
     
     if [ ! -z "${_DNS}" ]; then
-        /usr/bin/nmcli connection modify "${_CONN}" modify ipv4.dns "${_DNS}"
+        /usr/bin/nmcli connection modify "${_CONN}" ipv4.dns "${_DNS}"
     fi
     
     if [ ! -z "${_DNSSEARCH}" ]; then
-        /usr/bin/nmcli connection modify "${_CONN}" modify ipv4.dns-search "${_DNSSEARCH}"
+        /usr/bin/nmcli connection modify "${_CONN}" ipv4.dns-search "${_DNSSEARCH}"
     fi
 
     /usr/bin/nmcli connection down "${_CONN}" 
@@ -42,7 +42,7 @@ function set_network {
 
 function reset_ssh {
     rm -rf /etc/ssh/ssh_host_*
-    /usr/bin/dpkg-reconfigure openssh-server
+    /usr/sbin/dpkg-reconfigure openssh-server
     /bin/systemctl restart ssh.service
 }
 
