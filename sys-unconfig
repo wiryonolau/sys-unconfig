@@ -1,0 +1,86 @@
+#!/bin/bash
+
+function log {
+    echo $1>&2
+}
+
+function set_network {
+    _DEVICE=$1
+    _IPADDR=$2
+    _GATEWAY=$3
+    _DNS=$4
+    _DNSSEARCH=$5
+
+    _CONN=$(/usr/bin/nmcli -t -f GENERAL.CONNECTION --mode tabular device show "${_DEVICE}" | head -n1)
+
+    if [ "${_CONN}" = "--" ]; then
+        log "Device ${_DEVICE} doesn't not have connection"
+        echo 1
+        return
+    fi
+
+    if [ ! -z "${_IPADDR}" ]; then
+        /usr/bin/nmcli connection modify "${_CONN}" set ipv4.method static
+        /usr/bin/nmcli connection modify "${_CONN}" set ipv4.addresses "${_IPADDR}"
+    fi
+
+    if [ ! -z "${_GATEWAY}" ]; then
+        /usr/bin/nmcli connection modify "${_CONN}" set ipv4.gateway "${_GATEWAY}"
+    fi
+    
+    if [ ! -z "${_DNS}" ]; then
+        /usr/bin/nmcli connection modify "${_CONN}" set ipv4.dns "${_DNS}"
+    fi
+    
+    if [ ! -z "${_DNSSEARCH}" ]; then
+        /usr/bin/nmcli connection modify "${_CONN}" set ipv4.dns-search "${_DNSSEARCH}"
+    fi
+
+    /usr/bin/nmcli connection down "${_CONN}" 
+    /usr/bin/nmcli connection up "${_CONN}" 
+}
+
+function reset_ssh {
+    rm -rf /etc/ssh/ssh_host_*
+    dpkg-reconfigure openssh-server
+}
+
+function set_hostname {
+    _HOSTNAME=$1
+    /bin/sed -i "s/127.0.1.1.*/127.0.1.1\t${_HOSTNAME}/" /etc/hosts 
+    /usr/bin/hostnamectl set-hostname "${_HOSTNAME}" 
+}
+
+if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root"
+    exit 1
+fi
+
+read -e -p "Unconfig hosts ? [y/n] : " _UNHOST
+if [[ "${_UNHOST}" == "y" || "${_UNHOST}" == "Y" ]]; then
+    read -e -p "set hostname : " _HOSTNAME
+    set_hostname "${_HOSTNAME}"
+fi
+
+read -e -p "Unconfig connection ? [y/n] : " _UNCONN
+if [[ "${_UNCONN}" == "y" || "${_UNCONN}" == "Y" ]]; then
+    /usr/bin/nmcli device status
+    read -e -p "Device name : " _DEVICE
+
+    _EXIST=$(/usr/bin/nmcli -t -f GENERAL.DEVICE device show "${_DEVICE}")  
+    if [ -z "${_EXIST}" ]; then
+        exit 1
+    fi
+
+    read -e -p "Set ipv4 address/netmask : " _IPADDR
+    read -e -p "Set ipv4 gateway         : " _GATEWAY
+    read -e -p "Set dns                  : " _DNS
+    read -e -p "Set dns search           : " _DNSSEARCH
+    set_network "${_DEVICE}" "${_IPADDR}" "${_GATEWAY}" "${_DNS}" "${_DNSSEARCH}" 
+fi
+
+read -e -p "Unconfig ssh ? [y/n] : " _UNSSH
+if [[ "${_UNSSH}" == "y" || "${_UNSSH}" == "Y" ]]; then
+    log "Recreate ssh key"
+    reset_ssh
+fi
