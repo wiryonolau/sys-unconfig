@@ -1,7 +1,7 @@
 #!/bin/bash
 #Reset ssh on first startup
 if [ -z "/etc/UNCONFIG" ]; then
-    echo "First time running unconfig ssh"
+    echo "First time running, unconfig ssh"
     /usr/bin/sys-unconfig -ssh
-    touch /etc/UNCONFIG
+    echo 1 > /etc/UNCONFIG
 fi
