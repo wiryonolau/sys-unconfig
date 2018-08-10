@@ -1,0 +1,12 @@
+#Copy this to /etc/systemd/system/custom.target.wants/gputweak.service
+[Unit]
+Description=System unconfig on startup
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/sys-unconfig/startup-unconfig
+
+[Install]
+WantedBy=multi-user.target
+

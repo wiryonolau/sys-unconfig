@@ -1,9 +1,58 @@
 #!/bin/bash
+function usage
+{
+    echo "Usage: gputweak [-h|--help] [OPTIONS]"
+    echo " -h | --help      : this message"
+    echo ""
+    echo " OPTIONS"
+    echo "  -host <hostname>    : Update hostname"
+    echo "  -ssh                : Recreate ssh key"
+    exit 0
+}
+
+function parse_args
+{
+    local _ARGS=()
+    local _MANUAL=1
+
+    while [ "$1" ]
+    do
+        case "$1" in
+            "-h" | "--help")
+                usage
+                exit 0
+                ;;
+            "-host")
+                _MANUAL=0
+                if [ -z "${2}" ]; then
+                    "Please specify hostname"
+                    exit 0
+                fi
+                set_hostname "${2}"
+                ;;
+            "-ssh")
+                _MANUAL=0
+                reset_ssh
+                ;;
+        esac
+        shift
+    done
+
+    set -- "${args[@]}"
+  
+    if [ "${_MANUAL}" -eq "1" ]; then
+        manual
+    fi
+ 
+    exit 0
+}
+
 
 function log {
     echo $1>&2
 }
 
+#To reset to dhcp method ipv4.method to "auto" and ipv4.addresses to ""
 function set_network {
     _DEVICE=$1
     _IPADDR=$2
@@ -52,36 +101,50 @@ function set_hostname {
     /usr/bin/hostnamectl set-hostname "${_HOSTNAME}" 
 }
 
-if [[ $EUID -ne 0 ]]; then
-    echo "This script must be run as root"
-    exit 1
-fi
 
-read -e -p "Unconfig hosts ? [y/n] : " _UNHOST
-if [[ "${_UNHOST}" == "y" || "${_UNHOST}" == "Y" ]]; then
-    read -e -p "set hostname : " _HOSTNAME
-    set_hostname "${_HOSTNAME}"
-fi
+function manual {
+    read -e -p "Unconfig hosts ? [y/n] : " _UNHOST
+    if [[ "${_UNHOST}" == "y" || "${_UNHOST}" == "Y" ]]; then
+        read -e -p "set hostname : " _HOSTNAME
+        set_hostname "${_HOSTNAME}"
+    fi
 
-read -e -p "Unconfig connection ? [y/n] : " _UNCONN
-if [[ "${_UNCONN}" == "y" || "${_UNCONN}" == "Y" ]]; then
-    /usr/bin/nmcli device status
-    read -e -p "Device name : " _DEVICE
+    read -e -p "Unconfig connection ? [y/n] : " _UNCONN
+    if [[ "${_UNCONN}" == "y" || "${_UNCONN}" == "Y" ]]; then
+        /usr/bin/nmcli device status
+        read -e -p "Device name : " _DEVICE
 
-    _EXIST=$(/usr/bin/nmcli -t -f GENERAL.DEVICE device show "${_DEVICE}")  
-    if [ -z "${_EXIST}" ]; then
+        _EXIST=$(/usr/bin/nmcli -t -f GENERAL.DEVICE device show "${_DEVICE}")  
+        if [ -z "${_EXIST}" ]; then
+            exit 1
+        fi
+
+        read -e -p "Set ipv4 address/netmask : " _IPADDR
+        read -e -p "Set ipv4 gateway         : " _GATEWAY
+        read -e -p "Set dns                  : " _DNS
+        read -e -p "Set dns search           : " _DNSSEARCH
+        set_network "${_DEVICE}" "${_IPADDR}" "${_GATEWAY}" "${_DNS}" "${_DNSSEARCH}" 
+    fi
+
+    read -e -p "Unconfig ssh ? [y/n] : " _UNSSH
+    if [[ "${_UNSSH}" == "y" || "${_UNSSH}" == "Y" ]]; then
+        log "Recreate ssh key"
+        reset_ssh
+    fi
+}
+
+function main
+{
+    if [[ $EUID -ne 0 ]]; then
+        echo "This script must be run as root"
         exit 1
     fi
 
-    read -e -p "Set ipv4 address/netmask : " _IPADDR
-    read -e -p "Set ipv4 gateway         : " _GATEWAY
-    read -e -p "Set dns                  : " _DNS
-    read -e -p "Set dns search           : " _DNSSEARCH
-    set_network "${_DEVICE}" "${_IPADDR}" "${_GATEWAY}" "${_DNS}" "${_DNSSEARCH}" 
-fi
+    parse_args "$@"
+    exit 0
+}
 
-read -e -p "Unconfig ssh ? [y/n] : " _UNSSH
-if [[ "${_UNSSH}" == "y" || "${_UNSSH}" == "Y" ]]; then
-    log "Recreate ssh key"
-    reset_ssh
-fi
+
+main "$@"
+
+

@@ -42,6 +42,10 @@ function start_install
     cp -r ${WORKDIR}/* /opt/sys-unconfig
     rm -rf /usr/bin/sys-unconfig
     ln -s /opt/sys-unconfig/sys-unconfig /usr/bin/sys-unconfig
+
+    cp /opt/sys-unconfig/systemd/sys-unconfig.service /etc/systemd/system/sys-unconfig.service
+    systemctl enable sys-unconfig.service
+ 
     printf "Install done\n"
 }
 
