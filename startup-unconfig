@@ -1,7 +1,36 @@
 #!/bin/bash
-#Reset ssh on first startup
-if [ ! -f "/etc/UNCONFIG" ]; then
+DEVICES=$(nmcli device | grep -Eo 'enp.*' | awk '{print $1}')
+
+MACADDRS=()
+while read -r DEVICE; do
+    MACADDR=$(nmcli device show "${DEVICE}" | grep -Eo 'GENERAL.HWADDR:.*([0-9A-F:]+)' | awk '{print $2}')
+    if [ -z "${MACADDR}" ]; then
+        MACADDR="00:00:00:00:00:00"
+    fi
+    MACADDRS+=("$MACADDR")
+done <<< "${DEVICES}"
+
+TEMPFILE=$(mktemp /tmp/UNCONFIG-XXXXXXXX)
+UNCONFIG="/etc/UNCONFIG"
+
+printf "%s\n" "${MACADDRS[@]}" > "${TEMPFILE}"
+sort -o "${TEMPFILE}" "${TEMPFILE}"
+
+NEWMD5=$(md5sum "${TEMPFILE}" | awk '{print $1}')
+
+if [ ! -f "${UNCONFIG}" ]; then
     echo "First time running, unconfig ssh"
+    cp "${TEMPFILE}" "${UNCONFIG}"
     /usr/bin/sys-unconfig -ssh
-    touch /etc/UNCONFIG
+else
+    OLDMD5=$(md5sum "${UNCONFIG}" | awk '{print $1}')
+    if [ "${NEWMD5}" != "${OLDMD5}" ]; then
+        echo "New Device installed, unconfig ssh"
+        cp "${TEMPFILE}" "${UNCONFIG}"
+        /usr/bin/sys-unconfig -ssh
+    else
+        echo "No new device installed, do nothing"
+    fi
 fi
+
+rm "${TEMPFILE}"
