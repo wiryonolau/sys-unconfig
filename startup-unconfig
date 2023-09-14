@@ -1,8 +1,8 @@
 #!/bin/bash
 MACADDRS=($(ip -o link | grep -E '(eno.*|enp.*|ens.*)' | grep -v '@' | awk '{print $(NF-2)}' | awk -F'\' '{print $1}'))
 
-TEMPFILE=$(mktemp /tmp/UNCONFIG-XXXXXXXX)
-UNCONFIG="/tmp/UNCONFIG"
+TEMPFILE=$(mktemp /root/UNCONFIG-XXXXXXXX)
+UNCONFIG="/root/UNCONFIG"
 
 printf "%s\n" "${MACADDRS[@]}" > "${TEMPFILE}"
 sort -o "${TEMPFILE}" "${TEMPFILE}"
